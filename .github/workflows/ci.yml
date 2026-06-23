@@ -1,0 +1,89 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  lint-and-typecheck:
+    name: Lint & Typecheck
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run TypeScript typecheck
+        run: npm run typecheck
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: lint-and-typecheck
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test
+
+  build:
+    name: Production Build
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          VITE_GLEAN_API_KEY: ${{ secrets.VITE_GLEAN_API_KEY }}
+          VITE_GLEAN_INSTANCE: ${{ secrets.VITE_GLEAN_INSTANCE }}
+          VITE_DATABRICKS_HOST: ${{ secrets.VITE_DATABRICKS_HOST }}
+          VITE_DATABRICKS_TOKEN: ${{ secrets.VITE_DATABRICKS_TOKEN }}
+          VITE_MS_CLIENT_ID: ${{ secrets.VITE_MS_CLIENT_ID }}
+          VITE_MS_TENANT_ID: ${{ secrets.VITE_MS_TENANT_ID }}
+          VITE_SF_INSTANCE_URL: ${{ secrets.VITE_SF_INSTANCE_URL }}
+          VITE_SF_ACCESS_TOKEN: ${{ secrets.VITE_SF_ACCESS_TOKEN }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+          retention-days: 7
